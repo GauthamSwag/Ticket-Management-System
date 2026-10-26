@@ -1,0 +1,821 @@
+================================================================================
+           ENTERPRISE TICKET MANAGEMENT SYSTEM (TICKETFLOW)
+                  COMPREHENSIVE PROJECT WORK SUMMARY
+                      (PHASES 1 THROUGH 13 INCLUSIVE)
+================================================================================
+
+PROJECT WORKSPACE:
+/Users/gautham_swag/.gemini/antigravity-ide/scratch/Ticket Management System
+
+TECHNOLOGY STACK (STRICT MERN ARCHITECTURE):
+- Frontend:   React.js 18 (Vite, React Router v6, Lucide Icons, Recharts, Context API)
+- Backend:    Node.js (v25.6.1) & Express.js
+- Database:   MongoDB & Mongoose ODM (with embedded MongoDB Memory Server option)
+- Real-Time:  Socket.IO (v4 bi-directional WebSocket engine with JWT auth)
+- Security:   JWT (JSON Web Tokens), bcrypt salted password hashing, RBAC
+- Scheduling: node-cron (background automated monitoring)
+- Email:      Nodemailer (asynchronous, fail-safe transactional mailing)
+- Ports:      Backend: 5001 | Frontend: 3000
+
+================================================================================
+1. EXECUTIVE SUMMARY & CURRENT PROJECT STATUS
+================================================================================
+
+TicketFlow is a production-grade, enterprise-ready full-stack ticket management
+platform built from the ground up to handle support ticket lifecycles, real-time
+agent collaboration, file handling, audit compliance, SLA enforcement, analytics,
+administration, notifications, and an enterprise responsive design system.
+
+Total Automated Integration Tests: 245 / 245 PASSED (100% Pass Rate across 11 suites)
+- Phase 1 Test Suite: 11 / 11 Passed (Auth, JWT, RBAC)
+- Phase 2 Test Suite: 21 / 21 Passed (Ticket Lifecycle & Workflows)
+- Phase 3 Test Suite: 31 / 31 Passed (Comments, Attachments, Audit Logs)
+- Phase 4 Test Suite: 41 / 41 Passed (Real-time Sockets, Advanced Filtering)
+- Phase 5 Test Suite: 34 / 34 Passed (SLA Management & Background Monitoring)
+- Phase 6 Test Suite: 10 / 10 Passed (Role-Specific Analytics Dashboards)
+- Phase 7 Test Suite: 20 / 20 Passed (Server-side Search, Sort, Pagination)
+- Phase 8 Test Suite: 23 / 23 Passed (Admin User & Agent Management)
+- Phase 9 Test Suite: 20 / 20 Passed (In-App Notification System & Sockets)
+- Phase 11 Test Suite: 15 / 15 Passed (Security, CORS, DB Invariance & Audit)
+- Phase 12 Test Suite: 19 / 19 Passed (Input Validation, Malformed Request Resiliency & Error Handling)
+
+Frontend Production Build: Vite v5.4.21 bundle successfully verified (0 errors).
+Visual QA & Responsive Testing: Desktop (1440px) & Mobile (375px) 100% Verified.
+
+================================================================================
+2. PHASE-BY-PHASE WORK COMPLETED
+================================================================================
+
+--------------------------------------------------------------------------------
+PHASE 1: AUTHENTICATION, JWT & ROLE-BASED ACCESS CONTROL (RBAC)
+--------------------------------------------------------------------------------
+- User Model & Schemas:
+  * Name, email (unique), password (bcrypt salted hash, 10 rounds).
+  * Role-based access control with 3 distinct roles:
+    1. 'user': Standard customer/client creating and tracking personal tickets.
+    2. 'agent': Technical support personnel handling assigned queues.
+    3. 'admin': System administrators managing users, settings, and analytics.
+  * Department, phone, active status, timestamps.
+  * Password exclusion by default in all API queries (`select: false`).
+- JWT Token Authentication:
+  * Cryptographically signed tokens using HMAC-SHA256 with 30-day expiry.
+  * Extracted via Bearer header in Express middleware.
+- Middleware:
+  * `protect`: Verifies JWT validity, extracts user identity, rejects invalid tokens.
+  * `authorize(...roles)`: Enforces route-level role restrictions.
+- User Profile & Admin Directory:
+  * Profile view and update endpoints (`GET/PUT /api/auth/profile`).
+  * Admin-only user directory endpoint (`GET /api/auth/users`).
+- Frontend Authentication System:
+  * AuthContext provider with persistent token storage in localStorage.
+  * Glassmorphism dark-slate login and registration pages.
+  * 1-click demo login buttons for Admin, Agent, and User credentials.
+  * Route guards (`ProtectedRoute`) controlling access based on role.
+
+--------------------------------------------------------------------------------
+PHASE 2: CORE TICKET MANAGEMENT & LIFECYCLE WORKFLOW
+--------------------------------------------------------------------------------
+- Sequential Ticket IDs:
+  * Implemented atomic sequential ticket ID generator (e.g., TKT-000001, TKT-000002).
+  * Unique counter collection ensuring gap-free sequential identification.
+- Ticket Data Model:
+  * `ticketId`, `title`, `description`, `category`, `priority`, `status`.
+  * `createdBy`, `assignedTo`, `resolvedAt`, `closedAt`, `tags`.
+  * Category enum: Technical Issue, Account Issue, Billing, Software, Hardware, Network, Other.
+  * Priority enum: Low, Medium, High, Critical.
+  * Status lifecycle enum: Open -> Assigned -> In Progress -> Resolved -> Closed.
+- Lifecycle Transition Rules:
+  * Open: Initial state upon ticket creation by any user.
+  * Assigned: Set when Admin assigns ticket to a valid Support Agent.
+  * In Progress: Agent transitions ticket once investigation begins.
+  * Resolved: Agent or Admin marks ticket resolved (stamps `resolvedAt`).
+  * Closed: Admin officially closes ticket (stamps `closedAt`).
+- Role Scoping & Ownership Security:
+  * Users can only view, edit, or delete their own tickets (and only edit while Open).
+  * Agents can view and modify tickets specifically assigned to them.
+  * Admins have global visibility and reassignment authorization.
+  * Direct Object Reference (IDOR) attacks strictly blocked across all routes.
+- Frontend Ticket UI:
+  * Interactive Ticket Table with responsive sorting, status pills, and priority badges.
+  * Create Ticket modal/page with input validation.
+  * Detailed Ticket View with dynamic action buttons conditioned on user role.
+
+--------------------------------------------------------------------------------
+PHASE 3: COMMENTS, FILE ATTACHMENTS & AUDIT HISTORY
+--------------------------------------------------------------------------------
+- Ticket Discussion System (Comments):
+  * Mongoose Comment model linking ticket, user, message, and timestamps.
+  * Real-time comment posting and display.
+  * Deletion restricted to comment author or system administrator.
+- Secure File Attachment Management:
+  * Configured Multer storage engine saving files to `server/uploads/`.
+  * Unique file naming with timestamps to prevent collisions.
+  * Whitelisted MIME types (PDF, PNG, JPEG, GIF, TXT, DOCX, ZIP).
+  * Strict file size limit enforcement (up to 10 MB per file).
+  * Secure download endpoint (`GET /api/attachments/:id/download`) validating ticket access.
+  * File deletion removing both database record and physical disk file.
+- Immutable Activity & Audit Log:
+  * `TicketHistory` collection recording every state modification.
+  * Actions tracked: TICKET_CREATED, STATUS_CHANGED, PRIORITY_CHANGED, 
+    TICKET_ASSIGNED, COMMENT_ADDED, COMMENT_DELETED, ATTACHMENT_ADDED, 
+    ATTACHMENT_DELETED, SLA_RESPONSE_BREACHED, SLA_RESOLUTION_BREACHED,
+    SLA_CONFIGURATION_UPDATED, AI_CLASSIFICATION_REQUESTED.
+  * Records actor ID, timestamp, action type, description, and old/new values.
+  * Timeline view rendered in Ticket Details UI.
+
+--------------------------------------------------------------------------------
+PHASE 4: REAL-TIME SOCKETS, NOTIFICATIONS, SEARCH, PAGINATION & ANALYTICS
+--------------------------------------------------------------------------------
+- WebSocket Engine (Socket.IO):
+  * Handshake authentication validating JWT tokens on connection.
+  * Ticket-scoped authorization rooms (`ticket:TKT-000001`).
+  * Personal notification channels (`user:<userId>`).
+  * Live events broadcast for: `ticket:created`, `ticket:statusChanged`, 
+    `ticket:priorityChanged`, `ticket:assigned`, `comment:created`, 
+    `comment:deleted`, `attachment:added`, `attachment:deleted`, `notification:new`.
+- Persistent In-App Notifications:
+  * `Notification` model indexed by recipient, read status, and creation time.
+  * Triggers on assignment, status change, priority change, and mentions.
+  * Frontend `NotificationBell` with unread count badge, dropdown list,
+    and single/all "mark as read" capability.
+- Advanced Ticket Search & Multi-Param Filtering:
+  * Case-insensitive regex search matching ticketId, title, description, category.
+  * Combinable query filters: `status`, `priority`, `category`, `assignedTo`, `createdBy`.
+  * ISO 8601 date range filtering (`fromDate` to `toDate`).
+  * Strict RBAC scoping applied BEFORE search filters are evaluated.
+- Server-Side Pagination & Sorting:
+  * `page` (default: 1) and `limit` (default: 10, maximum: 100).
+  * Metadata returned: `page`, `limit`, `totalItems`, `totalPages`, `hasNextPage`, `hasPreviousPage`.
+  * Whitelisted sorting by `createdAt`, `updatedAt`, `priority`, `status`, `ticketId`, `title`.
+- Admin Operational Analytics Dashboard (`/analytics`):
+  * MongoDB Aggregation pipelines ($group, $facet, $project, $sort).
+  * Visualized using Recharts:
+    - Overview Cards (Total, Open, Assigned, In Progress, Resolved, Closed, Critical).
+    - Status Distribution Donut Chart.
+    - Priority Distribution Bar Chart.
+    - Category Distribution Bar Chart.
+    - 30-Day Ticket Creation Trend Area Chart.
+    - Support Agent Workload & Resolution Breakdown Table.
+
+--------------------------------------------------------------------------------
+PHASE 5: SLA MANAGEMENT, MONITORING, EMAIL, AI ADVISOR & HARDENING
+--------------------------------------------------------------------------------
+- Dynamic SLA Data Model:
+  * `SLA` collection in MongoDB storing targets per priority:
+    * Low:      24h First Response  / 72h Resolution
+    * Medium:   12h First Response  / 48h Resolution
+    * High:      4h First Response  / 24h Resolution
+    * Critical:  1h First Response  /  8h Resolution
+  * Auto-seeded on startup if empty; editable dynamically by Administrators.
+- Embedded Ticket SLA Tracking:
+  * Fields: `sla.responseDueAt`, `sla.resolutionDueAt`, `sla.responseBreached`,
+    `sla.resolutionBreached`, `sla.firstRespondedAt`, and warning notification flags.
+  * Deadlines computed dynamically on creation based on active SLA targets.
+  * `firstRespondedAt` stamped automatically upon first agent/admin response comment.
+- Automated SLA Background Monitor:
+  * Implemented using `node-cron` in `server/utils/slaMonitor.js`.
+  * Runs every minute inspecting all active, unresolved tickets.
+  * Flags Response SLA breaches and Resolution SLA breaches.
+  * Detects approaching deadlines (<= 15 minutes remaining) and issues warnings.
+  * Deduplication guards prevent duplicate warning or breach alerts.
+  * Emits real-time `sla:warning` and `sla:breached` WebSocket events.
+  * Writes automated audit records (`SLA_RESPONSE_BREACHED`, `SLA_RESOLUTION_BREACHED`).
+- Resilient Email Notification Infrastructure:
+  * Nodemailer service in `server/services/emailService.js`.
+  * Formatted HTML templates for: Assignment, Status Changes, SLA Warnings, SLA Breaches.
+  * Fail-safe operation: When disabled (`EMAIL_NOTIFICATIONS_ENABLED=false`) or SMTP
+    is unconfigured, the system safely logs and skips sending without failing the API request.
+- User Notification & Email Preferences:
+  * Extended User model with `notificationPreferences`:
+    `emailEnabled`, `assignmentEmails`, `statusChangeEmails`, `slaEmails`.
+  * Dedicated "Notification & Email Preferences" section on `/profile` page.
+- AI-Assisted Advisory Ticket Classification:
+  * Optional advisory service in `server/services/aiClassificationService.js`.
+  * Analyzes ticket title & description to suggest Category, Priority, and Confidence score.
+  * Non-destructive: Never overwrites user-selected category or priority values.
+  * Heuristic NLP fallback provides intelligent suggestions even when external AI is off.
+  * Endpoint: `POST /api/tickets/:id/classify` (accessible to Creator, Assigned Agent, Admin).
+  * Logs `AI_CLASSIFICATION_REQUESTED` to immutable audit history.
+- Admin SLA Rules Management (`/admin/sla`):
+  * Dedicated admin page for viewing and editing response/resolution hours inline.
+  * Protected by both frontend role guard and backend `authorize('admin')`.
+- Enhanced Admin SLA Analytics Dashboard:
+  * `/analytics` tabbed view adding "SLA Compliance & Monitoring".
+  * MongoDB aggregations: SLA Overview, Priority Breakdown, Breach Trends, Agent SLA Table.
+- Ticket SLA Filtering:
+  * Extended `GET /api/tickets` with `slaStatus` filter (`within_sla`, `approaching`, 
+    `response_breached`, `resolution_breached`).
+- Production Hardening & Error Standardization:
+  * Standardized API responses: `{ success: true/false, message: '...' }`.
+  * Zero exposure of sensitive fields (password hashes, JWT secrets, SMTP passwords, AI keys).
+
+--------------------------------------------------------------------------------
+PHASE 6: ROLE-SPECIFIC DASHBOARDS & SERVER-SIDE AGGREGATIONS
+--------------------------------------------------------------------------------
+- Backend Role-Specific Dashboard API (`GET /api/analytics/dashboard`):
+  * Unified endpoint protected by JWT middleware (`protect`), accessible to User, Agent, Admin.
+  * Server-side MongoDB aggregations tailored to `req.user.role`:
+    1. User Role:
+       - Total tickets created, open, in-progress, resolved, closed counts.
+       - Recent personal tickets array populated with assigned agent details.
+    2. Agent Role:
+       - Assigned queue total, open assigned, in-progress assigned, resolved assigned,
+         and high/critical incident counts.
+       - Recently assigned & active tickets array populated with creator details.
+    3. Admin Role:
+       - Global platform counts: total users, total agents, total tickets, open, assigned,
+         in-progress, resolved, closed, high/critical tickets.
+       - Complete chart aggregation datasets for: Status Distribution, Priority Breakdown,
+         Category Distribution, and 30-Day Creation Trends.
+       - Recent platform tickets array across all customers and departments.
+  * Zero frontend manual aggregation calculations.
+- Frontend Dynamic Dashboard Experience (`client/src/pages/Dashboard.jsx`):
+  * Fetches `GET /api/analytics/dashboard` on mount with instant fallback handling.
+  * Real-time WebSocket listeners (`ticket:*`, `sla:*`) auto-refreshing dashboard data.
+  * Three tailored role views:
+    1. USER VIEW: 5 metric stat cards, dedicated "My Recent Tickets" grid, and helpful action prompts.
+    2. AGENT VIEW: 5 queue-focused stat cards, "Recently Assigned & Active Queue" grid, clear queue status.
+    3. ADMIN VIEW: 8 system-wide stat cards, 2x2 Recharts grid (Status Donut, Priority Bar, Category Bar,
+       Creation Trend Area), and global platform tickets list.
+  * Responsive Dark-Slate Glassmorphism styling with manual sync and quick action controls.
+
+--------------------------------------------------------------------------------
+PHASE 7: SERVER-SIDE SEARCH, FILTERING, SORTING & PAGINATION
+--------------------------------------------------------------------------------
+- Hardened Backend Query Processing (`GET /api/tickets` in `ticketController.js`):
+  * Strict RBAC Scoping Evaluated First:
+    - User: Restricted strictly to `createdBy: req.user._id`.
+    - Agent: Restricted strictly to `assignedTo: req.user._id`.
+    - Admin: Full visibility across all system tickets.
+  * Regex Injection & ReDoS Protection:
+    - Search input strings are sanitized with `replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`.
+    - Multi-field search across `ticketId`, `title`, and `description` (case-insensitive `$regex`).
+  * Advanced Multi-Parameter Filtering:
+    - Status (`Open`, `Assigned`, `In Progress`, `Resolved`, `Closed`).
+    - Priority (`Low`, `Medium`, `High`, `Critical`).
+    - Category (`Technical`, `Billing`, `General`, `Feature Request`, `Bug Report`).
+    - SLA Status (`within_sla`, `approaching`, `response_breached`, `resolution_breached`).
+    - Administrative scoping filters (`assignedTo`, `createdBy`).
+    - Date range validation (`fromDate`, `toDate`) returning 400 Bad Request on invalid dates.
+  * Sorting Strategy with Safe Fallback:
+    - Support for `sort` convenience alias (`newest`, `oldest`, `priority_desc`, `priority_asc`,
+      `recently_updated`, `title_asc`, `title_desc`).
+    - Safe fallback to `newest` on unknown or missing sort values.
+    - Preserved `sortBy` and `sortOrder` for backward compatibility with existing tests.
+  * Standardized Pagination Metadata:
+    - Slices results via MongoDB `.skip()` and `.limit()`.
+    - Returns standardized metadata payload:
+      `{ totalItems, totalPages, currentPage, page, limit, hasNextPage, hasPreviousPage }`.
+- Frontend Ticket Management Experience (`client/src/pages/Tickets.jsx`):
+  * 100% Server-Side Driven: Client never downloads all records to filter in memory.
+  * Responsive Filter Control Bar:
+    - Debounced Search input (350ms) with one-click clear button.
+    - Status, Priority, Category, and Sorting dropdowns.
+    - SLA status filter and items-per-page toggle (10, 25, 50).
+    - "Clear Filters" button to reset state.
+  * Responsive Pagination Footer:
+    - Showing X-Y of Z item indicator.
+    - Previous and Next buttons with disabled state handlers.
+    - Page indicator ("Page X of Y").
+  * Real-Time WebSocket Synchronization:
+    - Socket.IO ticket events automatically trigger debounced re-fetch of the active query.
+
+--------------------------------------------------------------------------------
+PHASE 8: ADMIN MANAGEMENT MODULE (USERS & AGENTS)
+--------------------------------------------------------------------------------
+- User Directory & Advanced Querying (`GET /api/auth/users`):
+  * Protected by `protect` and `authorize('admin')`.
+  * Sanitized multi-field regex search across `name`, `email`, and `department`.
+  * Multi-attribute filtering: role (`user`, `agent`, `admin`), status (`isActive`), and `department`.
+  * Standardized pagination metadata payload (`totalItems`, `totalPages`, `currentPage`, `page`, `limit`,
+    `hasNextPage`, `hasPreviousPage`).
+- Role Assignment & Self-Demotion Safety (`PUT /api/auth/users/:id/role`):
+  * Protected by `protect` and `authorize('admin')`.
+  * Validates role input against strict enum `['user', 'agent', 'admin']` (400 Bad Request on invalid).
+  * Safety Guard: Prevents administrators from demoting their own admin account.
+- User Status Toggle & Self-Lockout Safety (`PUT /api/auth/users/:id/status`):
+  * Protected by `protect` and `authorize('admin')`.
+  * Supports explicit boolean `isActive` or toggle behavior.
+  * Safety Guard: Prevents administrators from deactivating their own admin account.
+  * Login Guard: Deactivated accounts are blocked at login with 403 Forbidden.
+- User Management Page (`client/src/pages/UserManagement.jsx`):
+  * Accessible at `/admin/users` under admin route guard.
+  * Responsive table displaying Name, Email, Department, Role, and Status.
+  * Interactive controls: Role change dropdown and Deactivate/Activate toggle button.
+  * Debounced search bar, role filter, status filter, and pagination footer.
+- Agent Management Page (`client/src/pages/AgentManagement.jsx`):
+  * Accessible at `/admin/agents` under admin route guard.
+  * Combines `GET /api/analytics/agents` and `GET /api/analytics/sla/agents`.
+  * Aggregate KPI stat cards (Active Agents, Active Queue, Total Resolved, SLA Breaches).
+  * Agent table displaying Assigned, In Progress, Resolved, SLA response/resolution breaches,
+    compliance rate badges, and workload status indicators.
+- Navigation Integration:
+  * Navbar updated to show "Users" and "Agents" links conditionally for the `admin` role.
+
+--------------------------------------------------------------------------------
+PHASE 9: IN-APP NOTIFICATION SYSTEM & SOCKET.IO INTEGRATION
+--------------------------------------------------------------------------------
+- Backend Notification API Endpoints (All strictly protected by `protect`):
+  * `GET /api/notifications`: Retrieve paginated user notifications, sorted by newest with standardized
+    pagination metadata (`totalItems`, `totalPages`, `currentPage`, `hasNextPage`, `hasPreviousPage`).
+  * `GET /api/notifications/unread-count`: Returns accurate integer count of unread notifications.
+  * `PUT /api/notifications/:id/read`: Marks a single notification as read (with 403 authorization guard
+    preventing users from marking another user's notifications).
+  * `PUT /api/notifications/read-all`: Marks all unread notifications as read for current user.
+  * `DELETE /api/notifications/:id`: Deletes notification with ownership protection.
+- Lifecycle Event Notification & Real-Time Socket Dispatch:
+  * Ticket Created: Automatically creates persistent in-app notifications (`TICKET_CREATED`) and emits
+    real-time `notification:new` to active administrators.
+  * Ticket Assigned: Dispatches persistent notification (`TICKET_ASSIGNED`) and socket event to assigned Agent.
+  * Status Change: Dispatches persistent notification (`TICKET_STATUS_CHANGED`) to ticket creator.
+  * Priority Change: Dispatches persistent notification (`TICKET_PRIORITY_CHANGED`) to ticket creator.
+  * Comment Added: Dispatches persistent notification (`TICKET_COMMENT`) to ticket participants.
+  * SLA Warning / Breach: Dispatches persistent notifications (`SLA_WARNING` / `SLA_BREACH`) to assigned agent.
+- Frontend Notification Bell (`client/src/components/NotificationBell.jsx`):
+  * Real-time unread badge count with pulse glow.
+  * Responsive glassmorphic dropdown displaying the 5 most recent notifications.
+  * Integrated "Mark all as read" button in header.
+  * "View All Notifications ->" footer link navigating to `/notifications`.
+  * Global `notifications:sync` event synchronization across components.
+- Dedicated Notifications Page (`client/src/pages/Notifications.jsx`):
+  * Protected route registered at `/notifications` in `App.jsx`.
+  * Filter tabs: All, Unread (with unread badge counter), Read.
+  * Distinct unread styling with glowing indigo dot indicator and subtle tinted background.
+  * Clickable notification cards linking directly to associated ticket (`/tickets/:id`) with auto-mark-as-read.
+  * In-line quick action buttons (mark read, delete) and bulk "Mark all as read" header action.
+  * Standardized pagination footer (Previous, Next, page indicator).
+
+================================================================================
+3. COMPLETE PROJECT REPOSITORY STRUCTURE
+================================================================================
+
+Ticket Management System/
+│
+├── .env                              # Root environment configuration
+├── .env.example                      # Root configuration template with documentation
+├── .gitignore                        # Git exclusion rules
+├── package.json                      # Monorepo orchestration scripts
+├── README.md                         # Comprehensive documentation manual
+├── PROJECT_SUMMARY.txt               # This project summary file
+│
+├── client/                           # Frontend React (Vite)
+│   ├── package.json                  # Dependencies (react, react-router-dom, lucide-react, recharts, socket.io-client)
+│   ├── vite.config.js                # Vite build config & proxy setup
+│   ├── index.html                    # Root HTML shell
+│   └── src/
+│       ├── main.jsx                  # React application entry point
+│       ├── App.jsx                   # React Router route registry (/admin/sla, /analytics, etc.)
+│       ├── index.css                 # Dark-slate glassmorphism CSS design system
+│       ├── components/
+│       │   ├── Navbar.jsx            # Top navigation with role links & NotificationBell
+│       │   ├── NotificationBell.jsx  # Notification dropdown with unread badge
+│       │   ├── ProtectedRoute.jsx    # Authentication & RBAC route guard
+│       │   ├── TicketTable.jsx       # Data grid with status pills & priority badges
+│       │   ├── CommentSection.jsx    # Real-time discussion thread
+│       │   ├── AttachmentSection.jsx # File upload & download manager
+│       │   ├── TicketHistory.jsx     # Activity & audit log timeline
+│       │   └── analytics/
+│       │       ├── OverviewCards.jsx # Status & volume metric tiles
+│       │       ├── StatusChart.jsx   # Donut chart of ticket statuses
+│       │       ├── PriorityChart.jsx # Bar chart of priority workload
+│       │       ├── CategoryChart.jsx # Category incident breakdown
+│       │       ├── TicketTrendChart.jsx # Historical trend area chart
+│       │       ├── AgentWorkloadChart.jsx # Agent resolution table
+│       │       └── SLADashboard.jsx  # SLA compliance, breaches & priority charts
+│       ├── context/
+│       │   ├── AuthContext.jsx       # Authentication state, login, logout, profile
+│       │   └── SocketContext.jsx     # Socket.IO connection & event dispatcher
+│       ├── pages/
+│       │   ├── Home.jsx              # Landing page
+│       │   ├── Login.jsx             # Sign-in page with 1-click demo buttons
+│       │   ├── Register.jsx          # User registration page
+│       │   ├── Dashboard.jsx         # Role-based dashboard overview
+│       │   ├── Tickets.jsx           # Ticket list with SLA & multi-param filters
+│       │   ├── CreateTicket.jsx      # Ticket creation form
+│       │   ├── TicketDetails.jsx     # Full ticket view with SLA card & AI advisor
+│       │   ├── Analytics.jsx         # Admin operational & SLA analytics tabs
+│       │   ├── AdminSLA.jsx          # Admin SLA rules configuration page
+│       │   ├── UserManagement.jsx    # Admin user directory, role & status management
+│       │   ├── AgentManagement.jsx   # Admin agent workload & SLA performance tracking
+│       │   ├── Profile.jsx           # User profile & notification preferences
+│       │   └── NotFound.jsx          # 404 error page
+│       └── services/
+│           └── api.js                # Central Axios client with auth interceptors
+│
+└── server/                           # Backend Node.js / Express / Socket.IO
+    ├── package.json                  # Dependencies (express, mongoose, bcryptjs, jsonwebtoken, socket.io, multer, nodemailer, node-cron)
+    ├── server.js                     # Express setup, Socket.IO binding & monitor startup
+    ├── .env                          # Backend environment variables
+    ├── .env.example                  # Backend environment template
+    ├── config/
+    │   └── db.js                     # MongoDB connection with MongoMemoryServer fallback
+    ├── controllers/
+    │   ├── authController.js         # Authentication, registration, profile, users
+    │   ├── ticketController.js       # Ticket CRUD, assignment, status, SLA calculation, AI classification
+    │   ├── commentController.js      # Discussion comments & firstRespondedAt stamping
+    │   ├── attachmentController.js   # File upload, download & deletion
+    │   ├── historyController.js      # Audit history retrieval
+    │   ├── notificationController.js # Persistent in-app notifications & read markers
+    │   ├── analyticsController.js    # Operational & SLA aggregation pipelines
+    │   └── slaController.js          # SLA configuration management
+    ├── middleware/
+    │   ├── auth.js                   # JWT protect & role authorize middleware
+    │   ├── upload.js                 # Multer disk storage, file filter & size limits
+    │   └── errorHandler.js           # Central standardized API error responder
+    ├── models/
+    │   ├── User.js                   # User schema with roles & notificationPreferences
+    │   ├── Ticket.js                 # Ticket schema with embedded SLA subdocument
+    │   ├── Comment.js                # Discussion comment schema
+    │   ├── Attachment.js             # File attachment metadata schema
+    │   ├── TicketHistory.js          # Immutable activity audit log schema
+    │   ├── Notification.js           # In-app persistent notification schema
+    │   ├── SLA.js                    # SLA priority target rules schema
+    │   └── Counter.js                # Atomic sequential ticket ID counter schema
+    ├── routes/
+    │   ├── authRoutes.js             # /api/auth endpoints
+    │   ├── ticketRoutes.js           # /api/tickets endpoints
+    │   ├── notificationRoutes.js     # /api/notifications endpoints
+    │   ├── analyticsRoutes.js        # /api/analytics endpoints
+    │   └── slaRoutes.js              # /api/sla endpoints
+    ├── services/
+    │   ├── emailService.js           # Nodemailer transactional mailer
+    │   └── aiClassificationService.js# Advisory AI category & priority engine
+    ├── socket/
+    │   └── index.js                  # Socket.IO connection, room auth & emission helpers
+    ├── uploads/                      # Secure file attachment storage directory
+    ├── utils/
+    │   ├── generateToken.js          # JWT signing utility
+    │   ├── historyLogger.js          # Audit logging helper
+    │   ├── notificationService.js    # In-app notification creation helper
+    │   ├── seed.js                   # Demo accounts and default SLA seeding
+    │   └── slaMonitor.js             # node-cron automated SLA deadline monitor
+    └── tests/
+        ├── phase1.test.js            # Phase 1 integration tests (11 tests)
+        ├── phase2.test.js            # Phase 2 integration tests (21 tests)
+        ├── phase3.test.js            # Phase 3 integration tests (31 tests)
+        ├── phase4.test.js            # Phase 4 integration tests (41 tests)
+        ├── phase5.test.js            # Phase 5 integration tests (34 tests)
+        ├── phase6.test.js            # Phase 6 integration tests (10 tests)
+        ├── phase7.test.js            # Phase 7 integration tests (20 tests)
+        ├── phase8.test.js            # Phase 8 integration tests (23 tests)
+        └── verify_phase5_live.js     # Live 20-step end-to-end verification script
+
+================================================================================
+4. COMPLETE API ENDPOINTS DIRECTORY
+================================================================================
+
+AUTHENTICATION & PROFILE:
+- POST   /api/auth/register             # Public user registration
+- POST   /api/auth/login                # User authentication & JWT generation
+- GET    /api/auth/me                   # Get currently authenticated user details
+- GET    /api/auth/profile              # Get full profile data
+- PUT    /api/auth/profile              # Update profile & notification preferences
+- GET    /api/auth/users                # Admin-only user directory (search, filter, sort, paginate)
+- PUT    /api/auth/users/:id/role       # Admin updates user role (user, agent, admin; self-demotion safe)
+- PUT    /api/auth/users/:id/status     # Admin toggles/updates user active status (self-lockout safe)
+
+TICKET MANAGEMENT & WORKFLOW:
+- POST   /api/tickets                   # Create ticket (calculates SLA deadlines)
+- GET    /api/tickets                   # Server-side query tickets: page, limit, search (sanitized regex),
+                                        # filters (status, priority, category, slaStatus, assignedTo, createdBy),
+                                        # date range (fromDate, toDate), sorting (sort/sortBy/sortOrder)
+                                        # Returns standardized pagination metadata payload.
+- GET    /api/tickets/:id               # Get ticket details by ObjectId or TKT-xxxxxx
+- PUT    /api/tickets/:id               # Update ticket details (creator when Open, or Admin)
+- DELETE /api/tickets/:id               # Delete ticket (creator when Open, or Admin)
+- PUT    /api/tickets/:id/assign        # Admin assigns ticket to Agent (transitions to Assigned)
+- PUT    /api/tickets/:id/status        # Transition ticket lifecycle status
+- PUT    /api/tickets/:id/priority      # Update ticket priority (Agent or Admin)
+- POST   /api/tickets/:id/classify      # Advisory AI categorization & priority suggestion
+
+DISCUSSION & COMMENTS:
+- POST   /api/tickets/:id/comments      # Add comment (stamps firstRespondedAt if Agent/Admin)
+- GET    /api/tickets/:id/comments      # Retrieve comment thread for ticket
+- DELETE /api/tickets/:id/comments/:cId # Delete comment (author or Admin)
+
+FILE ATTACHMENTS:
+- POST   /api/tickets/:id/attachments   # Upload attachment (Multer, max 10MB)
+- GET    /api/tickets/:id/attachments   # List attachments for ticket
+- GET    /api/attachments/:id/download  # Securely download attachment file
+- DELETE /api/attachments/:id           # Delete attachment record and physical file
+
+AUDIT HISTORY:
+- GET    /api/tickets/:id/history       # Retrieve full activity audit history log
+
+NOTIFICATIONS:
+- GET    /api/notifications             # Get user notifications (supports limit, isRead)
+- GET    /api/notifications/unread-count# Get count of unread notifications
+- PUT    /api/notifications/:id/read    # Mark single notification as read
+- PUT    /api/notifications/read-all    # Mark all user notifications as read
+- DELETE /api/notifications/:id         # Delete notification
+
+SLA MANAGEMENT (ADMIN ONLY):
+- GET    /api/sla                       # Get all configured SLA priority targets
+- PUT    /api/sla/:priority             # Update SLA targets for a priority level
+
+ANALYTICS & REPORTING (ADMIN ONLY):
+- GET    /api/analytics/overview        # Operational ticket counts & overview metrics
+- GET    /api/analytics/status          # Ticket count breakdown by status
+- GET    /api/analytics/priority        # Ticket count breakdown by priority
+- GET    /api/analytics/category        # Ticket count breakdown by category
+- GET    /api/analytics/agents          # Agent resolution & workload analytics
+- GET    /api/analytics/trends          # Historical ticket creation trends by date
+- GET    /api/analytics/sla/overview    # SLA compliance, breaches & approaching metrics
+- GET    /api/analytics/sla/priority    # SLA compliance grouped by priority level
+- GET    /api/analytics/sla/agents      # Agent SLA breach & resolution accountability
+- GET    /api/analytics/sla/trends      # Historical SLA breach counts over time
+
+HEALTH CHECK:
+- GET    /api/health                    # Server uptime & status check
+
+================================================================================
+5. AUTOMATED TEST SUITE EXECUTION SUMMARY
+================================================================================
+
+Command: `npm test` inside `/server`
+Runner:  Node.js Native Test Runner (`node:test`, `node:assert`, `supertest`)
+
+Results Breakdown:
+--------------------------------------------------------------------------------
+Phase 1: Authentication + JWT + RBAC
+Tests: 11 / 11 PASSED (0 failures)
+- Registration, duplicate email check, password hashing, JWT creation.
+- Login validation, invalid credential rejection, password exclusion.
+- Protected route authorization, role verification (User, Agent, Admin).
+
+Phase 2: Ticket Management + Lifecycle Workflow + Sequential IDs
+Tests: 21 / 21 PASSED (0 failures)
+- Sequential ID generator (TKT-000001, TKT-000002).
+- Ticket creation, field validation, creator ownership scoping.
+- Cross-tenant access blocking (403 Forbidden).
+- Admin assignment to Agent, Agent queue visibility.
+- Lifecycle state transitions (Open -> Assigned -> In Progress -> Resolved -> Closed).
+- Deletion restrictions (only Open tickets by creator).
+
+Phase 3: Comments + Attachments + Audit History
+Tests: 31 / 31 PASSED (0 failures)
+- Comment creation, retrieval, validation, and unauthorized deletion prevention.
+- File upload handling, MIME type enforcement, 10MB size limit.
+- Secure attachment download authorization and file deletion.
+- Audit history recording for all ticket lifecycle events.
+
+Phase 4: Sockets + Notifications + Search + Filtering + Pagination + Analytics
+Tests: 41 / 41 PASSED (0 failures)
+- Scoped search by ID, keyword, and case-insensitivity.
+- Multi-parameter filtering (status, priority, category, date ranges).
+- Server-side pagination metadata and max limit validation.
+- Persistent notifications, unread counts, mark-as-read endpoints.
+- Recharts aggregation pipelines (status, priority, category, workload, trends).
+- Socket.IO authenticated handshake, ticket room access, live event dispatch.
+
+Phase 5: SLA Management + Email + AI Advisor + SLA Analytics + Hardening
+Tests: 34 / 34 PASSED (0 failures)
+- Dynamic SLA deadline calculation from database configuration.
+- Priority-specific duration verification (Low, Medium, High, Critical).
+- Response SLA breach and Resolution SLA breach detection logic.
+- Duplicate warning and breach notification prevention.
+- Fail-safe email handling in disabled mode and preference honoring.
+- AI classification authentication, validation, advisory safety, and non-overwriting.
+- Admin SLA overview, priority, agent, and trend aggregations.
+- SLA filtering with strict RBAC scoping.
+- Non-admin blocked from SLA configuration modification (403 Forbidden).
+- Password hash, SMTP secret, and AI key exclusion from all API responses.
+
+Phase 6: Role-Specific Dashboards (User, Agent, Admin)
+Tests: 10 / 10 PASSED (0 failures)
+- Authentication required for GET /api/analytics/dashboard (401 Unauthorized without token).
+- User dashboard metrics scoped accurately to requesting user's created tickets.
+- User recent tickets isolated from other users' tickets.
+- Agent dashboard metrics scoped accurately to assigned queue.
+- Agent recent tickets populated with creator information.
+- Admin dashboard global counts (total users, total agents, total tickets, status counts).
+- Admin backend chart aggregations (Status Donut, Priority, Category, Creation Trends).
+- Admin recent platform tickets populated with creator and assigned agent.
+- Non-admin users strictly forbidden from admin-only analytics routes (403 Forbidden).
+
+Phase 7: Server-Side Search, Filtering, Sorting & Pagination
+Tests: 20 / 20 PASSED (0 failures)
+- Standardized pagination metadata (totalItems, totalPages, currentPage, page, limit, hasNextPage, hasPreviousPage).
+- Page 2 retrieval and slice verification.
+- Custom limit parameter validation (page slicing).
+- Validation rejection: 400 Bad Request on page=0, negative limits, and limit > 100.
+- Case-insensitive search across ticket title and ticketId.
+- Keyword search across ticket description.
+- Regex injection sanitization (escapes special characters [.*+?^${}()|[]\\]).
+- Exact match filtering by status.
+- Exact match filtering by priority.
+- Exact match filtering by category.
+- Date range filtering (fromDate and toDate against createdAt).
+- Invalid fromDate / toDate rejection with 400 Bad Request.
+- Sorting by oldest tickets (createdAt ascending).
+- Sorting by newest tickets (createdAt descending).
+- Priority-based sorting (Critical / High to Low).
+- Safe fallback on unrecognized sort fields (defaults to newest).
+- Combined multi-param query (search + status + priority + category + sort + pagination).
+- User RBAC scoping enforced before search/filter execution (only own tickets).
+- Agent RBAC scoping enforced before search/filter execution (only assigned tickets).
+- Admin full visibility across global tickets dataset.
+
+Phase 8: Admin Management Module (Users & Agents)
+Tests: 23 / 23 PASSED (0 failures)
+- Authentication required for GET /api/auth/users (401 Unauthorized without token).
+- Non-admin user blocked from GET /api/auth/users (403 Forbidden).
+- Support agent blocked from GET /api/auth/users (403 Forbidden).
+- Admin retrieves users with standardized pagination metadata (totalItems, totalPages, currentPage).
+- Admin searches users by keyword matching name, email, or department (case-insensitive).
+- Admin user search safely sanitizes regex special characters against injection.
+- Admin filters users by role (e.g. role=agent, role=user, role=admin).
+- Admin filters users by active status (isActive=true / isActive=false).
+- Admin pagination slices user records accurately (limit=2, page=1 and page=2 disjoint sets).
+- Validation rejection: 400 Bad Request on page=0 and limit > 100.
+- Non-admin blocked from role modification endpoint (403 Forbidden).
+- Support agent blocked from role modification endpoint (403 Forbidden).
+- Validation rejection: 400 Bad Request on invalid role value.
+- Non-existent user ID returns 404 Not Found on role update.
+- Admin successfully updates user role from 'user' to 'agent'.
+- Admin self-demotion prevention: 400 Bad Request when admin attempts to demote own account.
+- Non-admin blocked from status toggle endpoint (403 Forbidden).
+- Support agent blocked from status toggle endpoint (403 Forbidden).
+- Non-existent user ID returns 404 Not Found on status toggle.
+- Admin successfully deactivates user account (isActive=false).
+- Deactivated user blocked from logging in with 403 Forbidden account deactivated message.
+- Admin successfully reactivates user account (isActive=true) restoring login ability.
+- Admin self-deactivation prevention: 400 Bad Request when admin attempts to deactivate own account.
+
+Phase 9: In-App Notification System & Socket.IO Integration
+Tests: 20 / 20 PASSED (0 failures)
+- GET /api/notifications rejects unauthenticated requests with 401 Unauthorized.
+- GET /api/notifications/unread-count rejects unauthenticated requests with 401.
+- PUT /api/notifications/:id/read rejects unauthenticated requests with 401.
+- PUT /api/notifications/read-all rejects unauthenticated requests with 401.
+- Seed sample notifications and verify user-isolated retrieval (other users' notifications excluded).
+- Standardized pagination metadata (totalItems, totalPages, currentPage, hasNextPage, hasPreviousPage).
+- Query filtering by isRead (unread vs read).
+- Query filtering by notification type (e.g., TICKET_COMMENT).
+- Pagination parameter validation rejects invalid page and limit with 400 Bad Request.
+- GET /api/notifications/unread-count returns accurate integer count.
+- PUT /api/notifications/:id/read marks single notification as read and decrements count.
+- Authorization guard: 403 Forbidden when user attempts to mark another user's notification.
+- 404 Not Found when marking non-existent notification ID.
+- PUT /api/notifications/read-all marks all unread notifications as read and zeroes count without impacting other users.
+- DELETE /api/notifications/:id deletes notification successfully.
+- Ticket creation automatically dispatches persistent notification for Admins (TICKET_CREATED).
+- Ticket assignment automatically generates notification for assigned Agent (TICKET_ASSIGNED).
+- Status update automatically notifies ticket creator (TICKET_STATUS_CHANGED).
+- Priority update automatically generates notification for ticket creator (TICKET_PRIORITY_CHANGED).
+- Comment addition automatically generates notification for ticket participants (TICKET_COMMENT).
+
+--------------------------------------------------------------------------------
+PHASE 10: GLOBAL UI/UX OVERHAUL & DESIGN SYSTEM
+--------------------------------------------------------------------------------
+- Global Dashboard Shell & Responsive Navigation:
+  * Persistent top navigation on desktop with route indicators, quick action (+ New Ticket),
+    user identity pill with role badges, and real-time notification bell.
+  * Responsive mobile navigation: Collapses navigation into a touch-friendly hamburger
+    button on screens <= 992px, opening a full-viewport glassmorphism drawer.
+  * Auto-closing mobile drawer upon route transitions.
+  * Touch target compliance: All interactive inputs and buttons maintain >= 40px touch targets
+    (44px default per mobile Human Interface Guidelines).
+- Standardized Design System & Toast Notifications:
+  * Created `ToastContext.jsx` with `ToastProvider` and `useToast()` hook.
+  * Replaced all native browser `alert()` and `window.alert()` calls throughout the entire app.
+  * Supports success, error, warning, and info toasts with floating animations and auto-dismissal.
+  * Standardized `.form-input`, `.form-select`, and `.btn` variants (`.btn-primary`,
+    `.btn-secondary`, `.btn-danger`) with uniform focus rings, hover transformations,
+    and disabled states.
+- Skeleton Loaders & Empty States:
+  * Replaced basic text loading indicators with CSS shimmer skeleton components:
+    `TableSkeleton`, `DashboardSkeleton`, `TicketDetailsSkeleton`, and `CardSkeleton`.
+  * Implemented reusable `EmptyState.jsx` with iconography (e.g. `<Inbox />`), contextual
+    messaging, and primary/secondary call-to-action buttons.
+- Ticket Details 2-Column Responsive Redesign:
+  * Desktop (1440px): 2-column layout (70% Main Incident & Discussion / 30% Sidebar Meta).
+  * Mobile (375px): Stacks seamlessly into a single vertical column with 0 horizontal overflow.
+  * Main Column: Monospace ticket ID, badges, edit/delete controls, incident details,
+    tabs for comments, attachments, and audit history.
+  * Sidebar Meta: Workflow actions (e.g. "Mark as Resolved"), People & Assignment,
+    SLA Deadlines with countdowns, Priority & AI Triage, and Timeline metadata.
+- Visual QA & Automated Chrome E2E Testing:
+  * Captured full desktop (1440x900) and mobile (375x812) screenshots across /login,
+    /dashboard, /tickets, /tickets/create, and /tickets/:id.
+  * Verified DOM layout metrics: Zero horizontal scrolling (`scrollWidth === clientWidth`)
+    on both desktop and mobile resolutions.
+--------------------------------------------------------------------------------
+PHASE 11: CORE SECURITY, CORS, AUTHENTICATION HARDENING & INDUSTRY-LEVEL TESTING
+--------------------------------------------------------------------------------
+- CORS Configuration & Preflight Strictness:
+  * Restricts access strictly to client origin (`process.env.CLIENT_URL` defaulting to `http://localhost:3000`).
+  * Enforces `credentials: true` and restricts allowed HTTP methods to `['GET', 'POST', 'PUT', 'DELETE']`.
+  * Fully validates OPTIONS preflight returning 204 No Content with strict origin boundaries (rejecting wildcard `*`).
+- Data Leakage Prevention & Password Exclusion:
+  * Verified Mongoose schema exclusion (`password: { select: false }`) and controller projections.
+  * Explicitly excludes `password`, password hashes (`$2a$`, `$2b$`), and `JWT_SECRET` from all API payloads.
+  * Verified that populated sub-documents across all controllers (createdBy, assignedTo, performedBy, user)
+    never expose authentication credentials or disk file paths.
+- Token Expiration & Authentication Hardening:
+  * Explicitly intercepts `TokenExpiredError` returning structured 401 JSON (`error: 'TokenExpiredError'`).
+  * Explicitly intercepts `JsonWebTokenError` returning structured 401 JSON (`error: 'JsonWebTokenError'`).
+  * Prevents server unhandled exceptions and crashes on tampered or expired Bearer tokens.
+  * Hardened login and registration with input type validation to prevent NoSQL query object injection.
+- Deep Database State Invariance Assertions:
+  * Tested unauthorized privilege escalation (normal user attempting to elevate role to 'admin').
+  * Direct MongoDB query verification confirms the target user's role remains strictly 'user' in the database.
+  * Direct MongoDB query verification confirms unauthorized account deactivations leave `isActive: true`.
+  * Direct MongoDB query verification confirms admin self-demotion and self-deactivation are blocked.
+  * Contrast verification confirms MongoDB holds salted bcrypt hash while API responses completely redact it.
+
+--------------------------------------------------------------------------------
+PHASE 12: INPUT VALIDATION, ERROR HANDLING & MALFORMED REQUEST RESILIENCY
+--------------------------------------------------------------------------------
+- Malformed JSON & SyntaxError Interception:
+  * Central global error handling middleware in `server.js` and `errorHandler.js` intercepts
+    body-parser `SyntaxError` exceptions thrown on corrupt or broken JSON payloads.
+  * Responds with clean HTTP 400 Bad Request JSON (`{ success: false, message: 'Invalid JSON payload format.' }`)
+    without crashing the Node.js event loop or process.
+  * Verified across POST/PUT endpoints including `/api/tickets` and `/api/auth/login`.
+- Input Validation & Enum Boundary Enforcement:
+  * Ticket creation and updates strictly validate presence and string types for `title` and `description`,
+    rejecting empty or whitespace-only inputs with HTTP 400 Bad Request.
+  * Explicit length boundaries enforced: `title` <= 150 chars, `description` <= 5000 chars.
+  * Mongoose enum boundaries strictly validated against `CATEGORIES`, `PRIORITIES`, and `STATUSES`
+    for request bodies as well as query filter parameters (`?status=...`, `?priority=...`, `?category=...`),
+    rejecting invalid options (e.g. 'SuperCritical', 'Quantum Computing') with HTTP 400 Bad Request.
+- Parameter & Date Boundaries:
+  * Enforced strict integer boundary validation on pagination parameters (`page < 1`, `limit < 1`, `limit > 100`),
+    rejecting out-of-bounds queries like `?page=0&limit=500` with descriptive HTTP 400 Bad Request.
+  * Validates date strings in `?fromDate=...` and `?toDate=...` against ISO 8601 formatting, rejecting
+    unparseable values with HTTP 400 Bad Request.
+- Mongoose CastError & ObjectId Sanitation:
+  * Hardened `errorHandler.js` to catch Mongoose `CastError` exceptions generated from malformed ObjectIds
+    (e.g., `/api/tickets/not-a-valid-mongo-id`, `/api/auth/users/invalid-id/role`, `/api/notifications/invalid-id/read`).
+  * Transforms internal Mongoose CastError into standard HTTP 400 Bad Request with clear guidance:
+    `Invalid resource ID format: '<val>'. Must be a valid 24-character hexadecimal string.`
+  * Successfully distinguishes format syntax errors (HTTP 400) from non-existent valid ObjectIds (HTTP 404).
+- Centralized Error Response Standardization:
+  * Unified all error responses under a consistent JSON contract:
+    `{ success: false, message: '...', error: process.env.NODE_ENV === 'development' ? err.message : undefined }`
+  * Zero internal database stack traces or private paths exposed in production responses (`stack: undefined`).
+
+--------------------------------------------------------------------------------
+PHASE 13: CODE CLEANUP, FINAL VERIFICATION & PROJECT DOCUMENTATION
+--------------------------------------------------------------------------------
+- Code & Dependency Cleanup:
+  * Full sweep of `client/` and `server/` confirmed lean, active dependency sets.
+  * Verified absence of leftover debug `console.log` statements in client components and server controllers.
+  * Preserved clean server startup banners (`[Server]`, `[Database]`, `[Seed]`, `[SLAMonitor]`) and development error handlers.
+  * Verified `.gitignore` actively ignores `.env`, `*/.env`, and `*.env.local`.
+  * Documented `.env.example` in both root and `server/` with complete configuration options.
+- Comprehensive Root README.md Generation:
+  * Authored a publication-quality `README.md` at project root (`Ticket Management System/README.md`).
+  * Prominently features the "College Project Presentation Pitch" framing the architecture for academic and enterprise evaluation.
+  * Detailed coverage of all 12 prior phases: RBAC, Socket.IO WebSockets, SLA cron monitoring, AI triage engine, Admin management, and resiliency hardening.
+  * Outlines Database Collections, Core API Endpoints, Step-by-Step Setup, and Pre-seeded Demo Credentials.
+- Final End-to-End System Verification:
+  * Full automated test suite re-verified: 245 / 245 passing across 11 suites (100% pass rate).
+  * Frontend production bundle re-verified: Vite build succeeded in 1.89s with 0 errors.
+
+GRAND TOTAL: 245 / 245 TESTS PASSED (100% SUCCESS RATE, 0 FAILS, 0 SKIPS)
+
+================================================================================
+6. HOW TO RUN THE SYSTEM
+================================================================================
+
+Prerequisites:
+- Node.js (v18+)
+- npm
+
+1. Start Backend Server:
+   cd server
+   npm install
+   npm run seed       # Automatically provisions demo accounts and default SLAs
+   npm start          # Runs Express + Socket.IO + SLA Monitor on http://localhost:5001
+
+2. Start Frontend Client:
+   cd client
+   npm install
+   npm run dev        # Runs React Vite development server on http://localhost:3000
+
+3. Build Frontend for Production:
+   cd client
+   npm run build      # Produces optimized production bundle in client/dist
+
+4. Run Full Automated Test Suite:
+   cd server
+   npm test           # Runs all 245 automated integration tests across 11 test suites
+
+================================================================================
+7. DEMO CREDENTIALS
+================================================================================
+
+Role           Email                Password       Access
+--------------------------------------------------------------------------------
+Administrator  admin@example.com    password123    Full system, SLA rules, analytics
+Support Agent  agent@example.com    password123    Assigned queue, comments, status
+Standard User  user@example.com     password123    Personal tickets & tracking
+
+*(Note: The login page at http://localhost:3000/login features 1-click demo buttons
+ to automatically populate credentials for each role).*
+
+================================================================================
+                      END OF PROJECT WORK SUMMARY
+================================================================================

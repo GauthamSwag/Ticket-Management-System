@@ -1,0 +1,17 @@
+{
+  "name": "ticket-management-system",
+  "version": "1.0.0",
+  "description": "Full Stack MERN Ticket Management System",
+  "scripts": {
+    "server": "npm --prefix server start",
+    "server:dev": "npm --prefix server run dev",
+    "server:test": "npm --prefix server test",
+    "server:seed": "npm --prefix server run seed",
+    "client": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "test": "npm --prefix server test"
+  },
+  "keywords": ["mern", "ticket-management-system", "react", "express", "mongodb", "nodejs"],
+  "author": "Antigravity Engineering",
+  "license": "ISC"
+}
